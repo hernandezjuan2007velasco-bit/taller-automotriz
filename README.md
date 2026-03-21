@@ -19,12 +19,14 @@ ADSO-3413974
 ---
 
 <p align="center">
-  <img src="[ruta/a/tu/imagen.pn](https://www.google.com/imgres?q=one%20piece%20logo&imgurl=https%3A%2F%2F1000marcas.net%2Fwp-content%2Fuploads%2F2022%2F10%2FOne-Piece-Logo-1997.png&imgrefurl=https%3A%2F%2F1000marcas.net%2Fone-piece-logo%2F&docid=kRBtbS2OAafRVM&tbnid=CFcTovQykVZ_kM&vet=12ahUKEwixiYehn7GTAxXFs4QIHeYfBoUQnPAOegQIHhAB..i&w=3840&h=2160&hcb=2&ved=2ahUKEwixiYehn7GTAxXFs4QIHeYfBoUQnPAOegQIHhAB)" alt="Logo One Piece" width="80%"/>
+  <img src="ruta/a/tu/imagen.png" alt="500" width="1000"/>
 </p>
 
 <p align="center">
   <img src="https://capsule-render.vercel.app/api?type=waving&color=0:00FF00,100:0000FF&height=120&section=footer"/>
+  
 </p>
+
 
 ## 🚀 Perfil
 - 👨‍💻 **Nombre:** Juan Diego Hernandez Velasco
