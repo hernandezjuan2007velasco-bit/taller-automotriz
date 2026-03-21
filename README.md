@@ -25,7 +25,7 @@ ADSO-3413974
 - 📬 **Email:**hernandezjuan2007velasco@gmail.com
 - 🖥️ **Organización institucional:** code-sena
 
-
+---
 
 ![PHP](https://img.shields.io/badge/PHP-8.0-blue)
 ![Estado](https://img.shields.io/badge/Estado-En%20desarrollo-green)
