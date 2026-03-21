@@ -18,6 +18,9 @@ ADSO-3413974
 
 ---
 
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:00FF00,100:0000FF&height=120&section=footer"/>
+</p>
 
 ## 🚀 Perfil
 - 👨‍💻 **Nombre:** Juan Diego Hernandez Velasco
