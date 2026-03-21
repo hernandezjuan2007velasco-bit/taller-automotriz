@@ -14,3 +14,7 @@ CODE_ORGANIZATION: code-sena
 
 # ADSO-3413974
 ADSO-3413974
+
+![PHP](https://img.shields.io/badge/PHP-8.0-blue)
+![Estado](https://img.shields.io/badge/Estado-En%20desarrollo-green)
+![Licencia](https://img.shields.io/badge/Licencia-Académica-orange)
