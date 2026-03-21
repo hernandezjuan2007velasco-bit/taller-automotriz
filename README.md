@@ -18,9 +18,7 @@ ADSO-3413974
 
 ---
 
-<p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:00FF00,100:0000FF&height=120&section=footer"  width="700" />
-</p>
+
 
 
 ## 🚀 Perfil
@@ -31,6 +29,9 @@ ADSO-3413974
 
 ---
 
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:00FF00,100:0000FF&height=120&section=footer"  width="700" />
+</p>
 <p align="center">
   <img src="https://skillicons.dev/icons?i=php,html,css,js,mysql" />
 </p>
