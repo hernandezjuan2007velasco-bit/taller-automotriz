@@ -42,8 +42,6 @@ ADSO-3413974
 ![Estado](https://img.shields.io/badge/Estado-En%20desarrollo-green)
 ![Licencia](https://img.shields.io/badge/Licencia-Académica-orange)
 
-<p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:FFD700,100:1E90FF&height=140&section=footer&animation=twinkling"/>
-</p>
+
 
 
