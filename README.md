@@ -3,7 +3,7 @@ CONFIG
 FULL_NAME: Juan Diego Hernandez Velasco
 GITHUB_USER: hernandezjuan2007velasco-bit
 EMAIL: hernandezjuan2007velasco@gmail.com
-CODE_ORGANIZATION: code-sena https://github.com/code-sena
+CODE_ORGANIZATION: code-sena
 -->
 
 <h1 align="center">Juan Diego Hernandez Velasco</h1>
