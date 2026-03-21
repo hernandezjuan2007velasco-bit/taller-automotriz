@@ -22,7 +22,7 @@ ADSO-3413974
 ## 🚀 Perfil
 - 👨‍💻 **Nombre:** Juan Diego Hernandez Velasco
 - 👤 **GitHub:** hernandezjuan2007velasco-bit
-- 📬 Email: hernandezjuan2007velasco@gmail.com
+- 📬 **Email:** hernandezjuan2007velasco@gmail.com
 - 🖥️ **Organización institucional:** code-sena
 
 ---
