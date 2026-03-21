@@ -26,6 +26,14 @@ ADSO-3413974
   <img src="https://capsule-render.vercel.app/api?type=waving&color=0:00FF00,100:0000FF&height=120&section=footer"/>
 </p>
 
+<p align="center">
+  <img src="ruta/a/tu/imagen.png" alt="Logo One Piece" width="80%"/>
+</p>
+
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:00FF00,100:0000FF&height=120&section=footer"/>
+</p>
+
 ## 🚀 Perfil
 - 👨‍💻 **Nombre:** Juan Diego Hernandez Velasco
 - 👤 **GitHub:** hernandezjuan2007velasco-bit
