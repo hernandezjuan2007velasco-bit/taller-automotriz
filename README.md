@@ -10,7 +10,9 @@ CODE_ORGANIZATION: code-sena
 
 <p align="center">
   <img src="https://komarev.com/ghpvc/?username=juanperezdev&label=Profile%20views&style=flat-square&color=brightgreen" alt="Profile views">
-</p>
+  
+</p># ADSO-3413974
+ADSO-3413974
 
 ---
 
@@ -21,9 +23,6 @@ CODE_ORGANIZATION: code-sena
 - **Organización institucional:** code-sena
 
 ---
-
-# ADSO-3413974
-ADSO-3413974
 
 ![PHP](https://img.shields.io/badge/PHP-8.0-blue)
 ![Estado](https://img.shields.io/badge/Estado-En%20desarrollo-green)
