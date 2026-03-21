@@ -19,9 +19,8 @@ ADSO-3413974
 ---
 
 <p align="center">
-  <img src="img/onepiece.png" width="700"/>
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:00FF00,100:0000FF&height=120&section=footer"  width="700" />
 </p>
-
 
 
 ## 🚀 Perfil
