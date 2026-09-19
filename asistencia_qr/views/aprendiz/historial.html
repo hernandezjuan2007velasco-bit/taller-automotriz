@@ -1,0 +1,65 @@
+{% extends 'layout_app.html' %}
+
+{% set nav_activo = 'historial' %}
+{% block breadcrumb %}Aprendiz{% endblock %}
+{% block titulo_pagina %}Mi Historial de Asistencia{% endblock %}
+
+{% block contenido_pagina %}
+<div class="grid-cards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
+    <div class="card" style="padding:20px; text-align:center;">
+        <div style="font-size:12px; color:var(--muted);">Total Asistencias</div>
+        <div style="font-size:28px; font-weight:600; color:var(--success);">{{ metricas.asistencias }}</div>
+    </div>
+    <div class="card" style="padding:20px; text-align:center;">
+        <div style="font-size:12px; color:var(--muted);">Total Faltas</div>
+        <div style="font-size:28px; font-weight:600; color:var(--danger);">{{ metricas.faltas }}</div>
+    </div>
+    <div class="card" style="padding:20px; text-align:center;">
+        <div style="font-size:12px; color:var(--muted);">Correcciones / Retardos</div>
+        <div style="font-size:28px; font-weight:600; color:var(--warning);">{{ metricas.retardos }}</div>
+    </div>
+    <div class="card" style="padding:20px; text-align:center;">
+        <div style="font-size:12px; color:var(--muted);">Porcentaje Global</div>
+        <div style="font-size:28px; font-weight:600; color:var(--primary);">{{ metricas.porcentaje }}%</div>
+    </div>
+</div>
+
+<div class="card" style="overflow:hidden">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>Ficha</th>
+                    <th>Instructor</th>
+                    <th>Fecha</th>
+                    <th>Hora de Registro</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in registros %}
+                <tr>
+                    <td><b>{{ r.ficha_numero }}</b><br><span style="font-size:12px;color:var(--muted);">{{ r.ficha_programa }}</span></td>
+                    <td>{{ r.instructor_nombre }}</td>
+                    <td style="font-family:var(--mono)">{{ r.fecha }}</td>
+                    <td style="font-family:var(--mono)">{{ r.hora_registro }}</td>
+                    <td>
+                        {% if r.estado == 'presente' %}
+                            <span class="badge badge-success">Asistió</span>
+                        {% elif r.estado == 'ausente' %}
+                            <span class="badge badge-danger">Falta</span>
+                        {% else %}
+                            <span class="badge badge-warning">Corregido</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 40px; color: var(--muted);">Aún no tienes registros de asistencia.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

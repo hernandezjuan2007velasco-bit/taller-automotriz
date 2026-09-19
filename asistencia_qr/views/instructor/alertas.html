@@ -1,0 +1,102 @@
+{% extends 'layout_app.html' %}
+
+{% set nav_activo = 'alertas' %}
+{% block breadcrumb %}Seguimiento{% endblock %}
+{% block titulo_pagina %}Alertas tempranas de deserción{% endblock %}
+
+{% block contenido_pagina %}
+<div class="metrics stagger" style="grid-template-columns:repeat(3,1fr)">
+    <div class="metric">
+        <div class="top-row"><div class="lbl">Alertas activas</div><div class="micon danger"><svg class="icon"><use href="#ic-alert"/></svg></div></div>
+        <div class="val danger" data-count="{{ metricas.total|default(0) }}">{{ metricas.total|default(0) }}</div>
+        <div class="sub">Requieren revisión</div>
+    </div>
+    <div class="metric">
+        <div class="top-row"><div class="lbl">Riesgo alto</div><div class="micon danger"><svg class="icon"><use href="#ic-trending-down"/></svg></div></div>
+        <div class="val danger" data-count="{{ metricas.riesgo_alto|default(0) }}">{{ metricas.riesgo_alto|default(0) }}</div>
+        <div class="sub">3+ inasistencias seguidas</div>
+    </div>
+    <div class="metric">
+        <div class="top-row"><div class="lbl">Atendidas este mes</div><div class="micon brand"><svg class="icon"><use href="#ic-check"/></svg></div></div>
+        <div class="val success" data-count="{{ metricas.atendidas_mes|default(0) }}">{{ metricas.atendidas_mes|default(0) }}</div>
+        <div class="sub">Con nota registrada</div>
+    </div>
+</div>
+
+{% if alertas %}
+    {% for alerta in alertas %}
+    <div class="card alert-card hoverable reveal" style="animation-delay: {{ loop.index0 * 0.05 }}s">
+        <div class="alert-sev {% if alerta.tipo == 'riesgo_alto' %}red{% else %}amber{% endif %}"></div>
+        <div class="alert-body">
+            <div class="alert-top">
+                <span class="name">{{ alerta.aprendiz_nombre }}</span>
+                {% if alerta.tipo == 'riesgo_alto' %}
+                    <span class="badge badge-danger"><svg class="icon" style="width:12px;height:12px"><use href="#ic-trending-down"/></svg>Riesgo alto</span>
+                {% else %}
+                    <span class="badge badge-warning"><svg class="icon" style="width:12px;height:12px"><use href="#ic-alert"/></svg>Riesgo moderado</span>
+                {% endif %}
+            </div>
+            
+            <p class="alert-reason">{{ alerta.descripcion }}</p>
+            
+            <div class="risk-bar">
+                <div class="fill {% if alerta.tipo == 'riesgo_alto' %}high{% else %}mod{% endif %}" style="width: {{ alerta.porcentaje_riesgo }}%"></div>
+            </div>
+            
+            <div class="alert-meta">
+                <span>Ficha {{ alerta.ficha_numero }}</span>
+                <span>CC {{ alerta.aprendiz_documento }}</span>
+                <span>{{ alerta.porcentaje_riesgo }}% de riesgo</span>
+            </div>
+            
+            <div style="display:flex;gap:8px">
+                <button class="btn btn-primary btn-sm toggle-note-btn">Marcar como atendida</button>
+                <a href="{{ url_for('instructor.historial', q=alerta.aprendiz_documento) }}" class="btn btn-sm" style="text-decoration:none">Ver historial</a>
+            </div>
+            
+            <div class="note-box">
+                <form method="POST" action="{{ url_for('instructor.atender_alerta') }}" class="note-box-inner">
+                    <input type="hidden" name="alerta_id" value="{{ alerta.id }}">
+                    
+                    <label style="display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:8px">Nota de seguimiento</label>
+                    <textarea name="nota" placeholder="Describe las acciones tomadas, p. ej. 'Me comuniqué con el aprendiz, indica problemas de salud...'" required></textarea>
+                    
+                    <div style="display:flex; gap:8px">
+                        <button type="submit" class="btn btn-primary btn-sm">Guardar y cerrar alerta</button>
+                        <button type="button" class="btn btn-sm btn-cancelar-nota">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="empty-state card" style="padding: 60px 20px;">
+        <div class="ico" style="animation:none; background:var(--brand-50);">
+            <svg style="stroke:var(--brand-3)"><use href="#ic-check"/></svg>
+        </div>
+        <h3>Todo al día</h3>
+        <p>No hay alertas de deserción pendientes por revisar en este momento.</p>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.querySelectorAll('.toggle-note-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const noteBox = this.closest('.alert-body').querySelector('.note-box');
+            noteBox.classList.add('open');
+            this.style.display = 'none';
+        });
+    });
+    
+    document.querySelectorAll('.btn-cancelar-nota').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const noteBox = this.closest('.note-box');
+            noteBox.classList.remove('open');
+            noteBox.closest('.alert-body').querySelector('.toggle-note-btn').style.display = 'inline-flex';
+        });
+    });
+</script>
+{% endblock %}

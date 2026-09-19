@@ -1,0 +1,308 @@
+{% extends 'layout_app.html' %}
+
+{% set nav_activo = 'historial' %}
+{% block breadcrumb %}Consulta y Auditoría{% endblock %}
+{% block titulo_pagina %}Historial de asistencia{% endblock %}
+
+{% block topbar_acciones %}
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <button class="btn btn-sm btn-primary" onclick="exportarExcel()">
+        <svg class="icon" style="width:14px;height:14px"><use href="#ic-download"/></svg>
+        Exportar Excel SENA
+    </button>
+</div>
+{% endblock %}
+
+{% block contenido_pagina %}
+<div class="metrics stagger">
+    <div class="metric">
+        <div class="top-row"><div class="lbl">Sesiones en el rango</div><div class="micon brand"><svg class="icon"><use href="#ic-clock"/></svg></div></div>
+        <div class="val" data-count="{{ metricas.sesiones_total|default(0) }}">{{ metricas.sesiones_total|default(0) }}</div>
+        <div class="sub">Clases registradas</div>
+    </div>
+    <div class="metric">
+        <div class="top-row"><div class="lbl">Asistentes</div><div class="micon brand"><svg class="icon"><use href="#ic-users2"/></svg></div></div>
+        <div class="val success" data-count="{{ metricas.asistentes|default(0) }}">{{ metricas.asistentes|default(0) }}</div>
+        <div class="sub">Total registros presentes</div>
+        <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none"><path d="M0,18 L14,15 L28,17 L42,11 L56,13 L70,7 L84,9 L100,4" stroke="#39A900"/></svg>
+    </div>
+    <div class="metric">
+        <div class="top-row"><div class="lbl">Inasistentes</div><div class="micon danger"><svg class="icon"><use href="#ic-trending-down"/></svg></div></div>
+        <div class="val danger" data-count="{{ metricas.inasistentes|default(0) }}">{{ metricas.inasistentes|default(0) }}</div>
+        <div class="sub">Ausencias registradas</div>
+        <svg class="spark" viewBox="0 0 100 26" preserveAspectRatio="none"><path d="M0,6 L14,9 L28,8 L42,14 L56,12 L70,18 L84,16 L100,20" stroke="#D0433D"/></svg>
+    </div>
+    <div class="metric">
+        <div class="top-row"><div class="lbl">% de asistencia</div><div class="micon brand"><svg class="icon"><use href="#ic-percent"/></svg></div></div>
+        <div class="val" data-count="{{ metricas.porcentaje|default(0) }}" data-suffix="%">{{ metricas.porcentaje|default(0) }}%</div>
+        <div class="sub">Efectividad del período</div>
+    </div>
+</div>
+
+<div class="subtabs" style="margin-bottom: 20px;">
+    <div class="subtab active" onclick="showHistorialTab('registros', this)">Registros de Asistencia ({{ total }})</div>
+    <div class="subtab" onclick="showHistorialTab('sesiones', this)">Mis Sesiones Realizadas ({{ sesiones|length }})</div>
+</div>
+
+<div id="tab-registros" class="historial-tab">
+<form id="filters-form" method="GET" action="{{ url_for('instructor.historial') }}" class="filters-bar">
+    <select name="ficha_id">
+        <option value="">Todas las fichas</option>
+        {% for f in fichas %}
+            <option value="{{ f.id }}" {% if filtros.ficha_id == f.id|string or filtros.ficha == f.id|string %}selected{% endif %}>Ficha {{ f.numero }} — {{ f.programa }}</option>
+        {% endfor %}
+    </select>
+    
+    <div class="search-wrap">
+        <svg class="icon"><use href="#ic-search"/></svg>
+        <input type="text" name="q" placeholder="Buscar por aprendiz o CC..." value="{{ filtros.q }}">
+    </div>
+    
+    <div style="display:flex;align-items:center;gap:6px;">
+        <input type="date" name="fecha_inicio" value="{{ filtros.fecha_inicio }}" title="Fecha inicio">
+        <span style="color:var(--muted-2);font-size:12px">a</span>
+        <input type="date" name="fecha_fin" value="{{ filtros.fecha_fin }}" title="Fecha fin">
+    </div>
+    
+    <select name="estado">
+        <option value="">Todos los estados</option>
+        <option value="presente" {% if filtros.estado == 'presente' %}selected{% endif %}>Presente (Asistió)</option>
+        <option value="ausente" {% if filtros.estado == 'ausente' %}selected{% endif %}>Ausente (Inasistió)</option>
+        <option value="corregido" {% if filtros.estado == 'corregido' %}selected{% endif %}>Corregido / Justificado</option>
+    </select>
+    
+    <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+    {% if filtros.ficha_id or filtros.q or filtros.fecha_inicio or filtros.fecha_fin or filtros.estado %}
+        <a href="{{ url_for('instructor.historial') }}" class="btn btn-sm" style="color:var(--muted);text-decoration:none;">Limpiar</a>
+    {% endif %}
+    <div class="spacer"></div>
+</form>
+
+{% if registros %}
+<div class="card" style="overflow:hidden">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>Aprendiz</th>
+                    <th>Ficha / Programa</th>
+                    <th>Fecha</th>
+                    <th>Hora</th>
+                    <th>Estado</th>
+                    <th style="text-align:right;">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reg in registros %}
+                <tr class="{% if reg.estado == 'corregido' %}corregir-row{% endif %}">
+                    <td class="cell-person">
+                        <div class="mini-avatar">{{ reg.iniciales|default('AP') }}</div>
+                        <div>
+                            <div style="font-weight:600;">{{ reg.nombre }}</div>
+                            <div style="font-size:11.5px;color:var(--muted);font-family:var(--mono);">CC {{ reg.documento or 'Sin documento' }}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge badge-neutral" style="font-family:var(--mono);font-weight:700;">Ficha {{ reg.ficha_numero or '—' }}</span>
+                        <div style="font-size:11.5px;color:var(--muted);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ reg.ficha_programa or reg.programa }}">{{ reg.ficha_programa or reg.programa or '' }}</div>
+                    </td>
+                    <td>{{ reg.fecha_formateada or reg.fecha or '—' }}</td>
+                    <td style="font-family:var(--mono);font-size:12.5px;">{{ reg.hora_formateada or reg.hora_registro or '—' }}</td>
+                    <td>
+                        {% if reg.estado == 'presente' %}
+                            <span class="badge badge-success"><span class="dot"></span>Presente</span>
+                        {% elif reg.estado == 'ausente' %}
+                            <span class="badge badge-danger"><span class="dot"></span>Ausente</span>
+                        {% elif reg.estado == 'corregido' %}
+                            <span class="badge badge-warning"><span class="dot"></span>Corregido</span>
+                        {% else %}
+                            <span class="badge badge-neutral">{{ reg.estado|capitalize }}</span>
+                        {% endif %}
+                        {% if reg.motivo_correccion %}
+                            <div style="font-size:11px;color:var(--muted);font-style:italic;margin-top:2px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ reg.motivo_correccion }}">
+                                {{ reg.motivo_correccion }}
+                            </div>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:right;">
+                        <button class="icon-btn toggle-corregir-btn" title="Corregir asistencia / novedad" data-tip="Corregir">
+                            <svg class="icon"><use href="#ic-edit"/></svg>
+                        </button>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="6" style="padding:0">
+                        <div class="corregir-panel">
+                            <form method="POST" action="{{ url_for('instructor.corregir_asistencia') }}" class="corregir-panel-inner" style="background:var(--surface-2);border-left:3px solid var(--brand);margin:10px 14px;border-radius:var(--radius-sm);padding:14px 16px;">
+                                <input type="hidden" name="asistencia_id" value="{{ reg.id }}">
+                                
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+                                    <div style="font-size:13px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:6px;">
+                                        <svg class="icon" style="width:14px;height:14px;stroke:var(--brand);"><use href="#ic-edit"/></svg>
+                                        Novedad / Corrección Manual: <span style="color:var(--brand-3);">{{ reg.nombre }}</span> (CC {{ reg.documento }})
+                                    </div>
+                                    <span style="font-size:11px;color:var(--muted);font-family:var(--mono);">Registro ID #{{ reg.id }}</span>
+                                </div>
+                                
+                                <div style="display:grid;grid-template-columns:180px 1fr auto;gap:12px;align-items:center;">
+                                    <div>
+                                        <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;">Nuevo Estado</label>
+                                        <select name="estado" style="width:100%;padding:8px 10px;border-radius:var(--radius-sm);border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;">
+                                            <option value="presente" {% if reg.estado == 'presente' %}selected{% endif %}>Presente (Asistió)</option>
+                                            <option value="ausente" {% if reg.estado == 'ausente' %}selected{% endif %}>Ausente (Inasistió)</option>
+                                            <option value="corregido" {% if reg.estado == 'corregido' %}selected{% endif %}>Corregido / Justificado</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;">Motivo o Justificación Obligatoria</label>
+                                        <input type="text" name="motivo" placeholder="Ej: Reportó asistencia verbalmente, incapacidad médica, permiso institucional..." value="{{ reg.motivo_correccion|default('') }}" required style="width:100%;margin:0;">
+                                    </div>
+                                    
+                                    <div style="display:flex;gap:8px;align-self:flex-end;">
+                                        <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+                                        <button type="button" class="btn btn-sm btn-cancelar-corregir">Cancelar</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Paginación Real del Servidor -->
+    <div class="pagination">
+        <div class="info">
+            {% if total > 0 %}
+                Mostrando <b>{{ (pagina - 1) * por_pagina + 1 }}</b> a <b>{{ [pagina * por_pagina, total]|min }}</b> de <b>{{ total }}</b> registros
+            {% else %}
+                0 registros encontrados
+            {% endif %}
+        </div>
+        <div class="pages">
+            {% if pagina > 1 %}
+                <a href="{{ url_for('instructor.historial', pagina=pagina-1, ficha_id=filtros.ficha_id, q=filtros.q, fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, estado=filtros.estado) }}" class="page-btn" title="Página anterior">&laquo;</a>
+            {% endif %}
+            
+            {% for p in range(1, total_paginas + 1) %}
+                {% if p == 1 or p == total_paginas or (p >= pagina - 2 and p <= pagina + 2) %}
+                    <a href="{{ url_for('instructor.historial', pagina=p, ficha_id=filtros.ficha_id, q=filtros.q, fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, estado=filtros.estado) }}" class="page-btn {% if p == pagina %}active{% endif %}">{{ p }}</a>
+                {% elif p == pagina - 3 or p == pagina + 3 %}
+                    <span class="page-btn" style="border:none;background:transparent;cursor:default;">...</span>
+                {% endif %}
+            {% endfor %}
+            
+            {% if pagina < total_paginas %}
+                <a href="{{ url_for('instructor.historial', pagina=pagina+1, ficha_id=filtros.ficha_id, q=filtros.q, fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, estado=filtros.estado) }}" class="page-btn" title="Página siguiente">&raquo;</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="empty-state card" style="padding: 60px 20px;">
+    <div class="ico">
+        <svg><use href="#ic-history"/></svg>
+    </div>
+    <h3>No se encontraron registros de asistencia</h3>
+    <p>Ajusta los filtros o intenta con un rango de fechas diferente.</p>
+    {% if filtros.ficha_id or filtros.q or filtros.fecha_inicio or filtros.fecha_fin or filtros.estado %}
+        <a href="{{ url_for('instructor.historial') }}" class="btn btn-sm btn-primary" style="margin-top: 14px;">Restablecer filtros</a>
+    {% endif %}
+</div>
+{% endif %}
+</div> <!-- Fin tab registros -->
+
+<div id="tab-sesiones" class="historial-tab" style="display:none">
+    <div class="card" style="overflow:hidden">
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>Ficha</th>
+                        <th>Fecha</th>
+                        <th>Horario</th>
+                        <th>Asistencias</th>
+                        <th>Estado</th>
+                        <th style="text-align:right;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in sesiones %}
+                    <tr>
+                        <td>
+                            <b>Ficha {{ s.ficha_numero }}</b><br>
+                            <span style="font-size:12px;color:var(--muted);">{{ s.ficha_programa }}</span>
+                        </td>
+                        <td>{{ s.fecha }}</td>
+                        <td style="font-family:var(--mono);font-size:12.5px;">{{ s.hora_inicio }} - {{ s.hora_fin|default('En curso') }}</td>
+                        <td><b>{{ s.asistencias_count }}</b> presentes</td>
+                        <td>
+                            {% if s.estado == 'activa' %}
+                                <span class="badge badge-success"><span class="dot"></span>Activa</span>
+                            {% else %}
+                                <span class="badge badge-neutral">Cerrada</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:right;white-space:nowrap;">
+                            <a href="{{ url_for('instructor.historial', ficha_id=s.ficha_id, fecha_inicio=s.fecha, fecha_fin=s.fecha) }}" class="btn btn-sm" title="Filtrar registros de esta sesión">
+                                <svg class="icon" style="width:13px;height:13px"><use href="#ic-search"/></svg> Ver lista
+                            </a>
+                            <form method="POST" action="{{ url_for('instructor.generar_sesion') }}" style="display:inline;">
+                                <input type="hidden" name="ficha_id" value="{{ s.ficha_id }}">
+                                <button type="submit" class="btn btn-sm" title="Reabrir / Duplicar esta sesión">
+                                    <svg class="icon" style="width:13px;height:13px"><use href="#ic-plus"/></svg> Duplicar
+                                </button>
+                            </form>
+                            {% if s.estado == 'activa' %}
+                            <form method="POST" action="{{ url_for('instructor.cerrar_sesion') }}" style="display:inline;">
+                                <input type="hidden" name="sesion_id" value="{{ s.id }}">
+                                <button type="submit" class="btn btn-danger btn-sm" title="Cerrar sesión manualmente">Cerrar</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px 20px; color: var(--muted);">No has realizado ninguna sesión todavía.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.querySelectorAll('.toggle-corregir-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const panel = this.closest('tr').nextElementSibling.querySelector('.corregir-panel');
+            panel.classList.toggle('open');
+        });
+    });
+    
+    document.querySelectorAll('.btn-cancelar-corregir').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.corregir-panel').classList.remove('open');
+        });
+    });
+
+    function showHistorialTab(tabName, element) {
+        document.querySelectorAll('.historial-tab').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.subtab').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-' + tabName).style.display = 'block';
+        element.classList.add('active');
+    }
+    
+    function exportarExcel() {
+        const form = document.getElementById('filters-form');
+        const params = new URLSearchParams(new FormData(form));
+        window.location.href = "{{ url_for('instructor.exportar_excel') }}?" + params.toString();
+    }
+</script>
+{% endblock %}

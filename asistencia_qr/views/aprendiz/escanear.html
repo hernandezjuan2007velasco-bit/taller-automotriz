@@ -1,0 +1,346 @@
+{% extends 'layout.html' %}
+
+{% block titulo %}Registrar Asistencia{% endblock %}
+
+{% block contenido %}
+<div class="aprendiz-page">
+    
+    <div class="aprendiz-top">
+        <div class="app-name">Asistencia QR &middot; SENA</div>
+        <div class="ficha" id="aprendiz-subtitulo">
+            {% if usuario_actual and usuario_actual.nombre %}
+                {{ usuario_actual.nombre }} &mdash; Registro de Asistencia
+            {% else %}
+                Registro de Asistencia a Formación
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="aprendiz-body">
+        <!-- Estado: Formulario (por defecto) -->
+        <div id="view-form">
+            <p class="scan-hint" style="margin-bottom:16px;">
+                Ingresa tu número de cédula y nombres completos para registrar tu asistencia a la sesión.
+            </p>
+
+            <!-- Selector de Modo de Ingreso -->
+            <div style="display:flex;gap:8px;margin-bottom:18px;">
+                <button type="button" id="btn-toggle-camara" class="btn btn-sm" style="flex:1;justify-content:center;" onclick="toggleCamaraScanner()">
+                    <svg class="icon" style="width:15px;height:15px"><use href="#ic-camera"/></svg>
+                    <span id="txt-toggle-camara">Escanear con Cámara</span>
+                </button>
+            </div>
+
+            <!-- Visor de Cámara QR -->
+            <div id="camara-scanner-wrap" style="display:none;margin-bottom:18px;">
+                <div class="camera-scanner-wrap">
+                    <div id="qr-reader" style="width:100%;"></div>
+                    <div class="scanner-laser"></div>
+                    <div class="scanner-target-box"></div>
+                </div>
+                <div style="text-align:center;font-size:12px;color:var(--muted);margin-top:6px;">
+                    Apunta la cámara hacia el código QR proyectado por el instructor
+                </div>
+            </div>
+
+            <form id="form-confirmar">
+                <div class="form-field" style="margin-bottom:14px; text-align:left;">
+                    <label for="input-documento" style="display:block; margin-bottom:6px; font-weight:600; font-size:13px; color:var(--text);">Número de Cédula / Documento *</label>
+                    <div style="position:relative;">
+                        <input type="text" id="input-documento" name="documento" placeholder="Ej: 1075342198" required autocomplete="off" style="width:100%; font-size:15px; font-weight:600; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--surface); color:var(--ink);" value="{% if usuario_actual and usuario_actual.documento %}{{ usuario_actual.documento }}{% endif %}">
+                        <span id="doc-loading" style="display:none; position:absolute; right:12px; top:12px; font-size:11px; color:var(--muted);">Buscando...</span>
+                    </div>
+                </div>
+
+                <div class="form-field" style="margin-bottom:14px; text-align:left;">
+                    <label for="input-nombre" style="display:block; margin-bottom:6px; font-weight:600; font-size:13px; color:var(--text);">Nombres y Apellidos completos *</label>
+                    <input type="text" id="input-nombre" name="nombre" placeholder="Ej: Juan Esteban Perdomo Rojas" required autocomplete="name" style="width:100%; font-size:15px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--surface); color:var(--ink);" value="{% if usuario_actual and usuario_actual.nombre %}{{ usuario_actual.nombre }}{% endif %}">
+                </div>
+
+                <div class="form-field" style="margin-bottom:14px; text-align:left;">
+                    <label for="input-codigo" style="display:block; margin-bottom:6px; font-weight:600; font-size:13px; color:var(--text);">Código de sesión *</label>
+                    <input type="text" id="input-codigo" name="codigo" placeholder="Ej: 1-59658624-5828AC16" required autocomplete="off" style="width:100%; font-family:var(--mono); letter-spacing:.05em; font-size:14px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); background:var(--surface); color:var(--ink);" value="{{ codigo_url }}">
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:10px; padding:13px 17px; font-size:15px;">
+                    <svg class="icon" style="width:16px;height:16px"><use href="#ic-check"/></svg>
+                    Confirmar mi asistencia
+                </button>
+            </form>
+        </div>
+
+        <!-- Estado: Éxito -->
+        <div id="view-success" style="display:none;">
+            <div class="result-wrap">
+                <div class="result-icon ok"><svg><use href="#ic-check"/></svg></div>
+                <div class="result-title">¡Asistencia registrada con éxito!</div>
+                <div class="result-desc">Tus datos y asistencia quedaron registrados en la sesión y vinculados a la ficha de formación sin perder información.</div>
+                <div class="result-detail" id="result-detail" style="margin-top:16px;">
+                    <!-- Se llena via JS -->
+                </div>
+                <button class="btn btn-sm" style="margin-top:22px; width:100%; justify-content:center;" onclick="volverAlFormulario(false)">
+                    Registrar a otro aprendiz
+                </button>
+            </div>
+        </div>
+
+        <!-- Estado: QR expirado -->
+        <div id="view-expired" style="display:none;">
+            <div class="result-wrap">
+                <div class="result-icon warn"><svg><use href="#ic-refresh"/></svg></div>
+                <div class="result-title">El QR se actualizó</div>
+                <div class="result-desc">El código cambió mientras completabas el formulario (el QR rota cada 30 segundos). Ingresa el código actualizado que proyecta el instructor.</div>
+                <button class="btn btn-primary" style="margin-top:20px; width:100%; justify-content:center;" onclick="volverAlFormulario(true)">
+                    <svg class="icon" style="width:15px;height:15px"><use href="#ic-qr"/></svg>Actualizar código
+                </button>
+            </div>
+        </div>
+
+        <!-- Estado: Error -->
+        <div id="view-error" style="display:none;">
+            <div class="result-wrap">
+                <div class="result-icon err"><svg><use href="#ic-x"/></svg></div>
+                <div class="result-title">No se pudo registrar</div>
+                <div class="result-desc" id="error-message">Verifica los datos ingresados y que el código sea el vigente.</div>
+                <button class="btn" style="margin-top:20px; width:100%; justify-content:center;" onclick="volverAlFormulario(true)">
+                    Volver a intentar
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Botón logout flotante si está logueado -->
+{% if usuario_actual %}
+<a href="{{ url_for('auth.logout') }}" class="theme-toggle" style="left:auto;right:20px;">
+    <svg class="icon" style="width:14px;height:14px"><use href="#ic-logout"/></svg>
+    <span>Salir</span>
+</a>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+    let html5QrCodeScanner = null;
+    let camaraActiva = false;
+
+    function parseCodigoFromQr(decodedText) {
+        if (!decodedText) return '';
+        try {
+            if (decodedText.includes('codigo=')) {
+                const url = new URL(decodedText, window.location.origin);
+                return url.searchParams.get('codigo') || decodedText;
+            }
+        } catch (e) {
+            // No es URL válida
+        }
+        return decodedText.trim();
+    }
+
+    async function toggleCamaraScanner() {
+        const wrap = document.getElementById('camara-scanner-wrap');
+        const btnTxt = document.getElementById('txt-toggle-camara');
+        
+        if (camaraActiva) {
+            detenerCamara();
+            wrap.style.display = 'none';
+            btnTxt.textContent = 'Escanear con Cámara';
+            camaraActiva = false;
+        } else {
+            wrap.style.display = 'block';
+            btnTxt.textContent = 'Ocultar Cámara';
+            camaraActiva = true;
+            iniciarCamara();
+        }
+    }
+
+    function iniciarCamara() {
+        if (typeof Html5Qrcode === 'undefined') {
+            showToast('Librería de escaneo no disponible en este momento', 'error');
+            return;
+        }
+        
+        if (!html5QrCodeScanner) {
+            html5QrCodeScanner = new Html5Qrcode("qr-reader");
+        }
+
+        const config = { fps: 10, qrbox: { width: 220, height: 220 } };
+        html5QrCodeScanner.start(
+            { facingMode: "environment" },
+            config,
+            (decodedText) => {
+                const codigoExtraido = parseCodigoFromQr(decodedText);
+                if (codigoExtraido) {
+                    document.getElementById('input-codigo').value = codigoExtraido;
+                    showToast('¡Código QR capturado con éxito!');
+                    detenerCamara();
+                    document.getElementById('camara-scanner-wrap').style.display = 'none';
+                    document.getElementById('txt-toggle-camara').textContent = 'Escanear con Cámara';
+                    camaraActiva = false;
+                    
+                    // Si ya tiene documento y nombre, auto-enviar
+                    const doc = document.getElementById('input-documento').value.trim();
+                    const nom = document.getElementById('input-nombre').value.trim();
+                    if (doc && nom && nom.length >= 3) {
+                        document.querySelector('#form-confirmar button[type="submit"]').click();
+                    }
+                }
+            },
+            (errorMessage) => {
+                // Silencioso mientras busca QR
+            }
+        ).catch((err) => {
+            console.warn('No se pudo acceder a la cámara:', err);
+            showToast('No se pudo abrir la cámara. Ingresa el código manualmente.', 'warning');
+            document.getElementById('camara-scanner-wrap').style.display = 'none';
+            document.getElementById('txt-toggle-camara').textContent = 'Escanear con Cámara';
+            camaraActiva = false;
+        });
+    }
+
+    function detenerCamara() {
+        if (html5QrCodeScanner) {
+            html5QrCodeScanner.stop().then(() => {
+                html5QrCodeScanner.clear();
+            }).catch(() => {});
+        }
+    }
+
+    function volverAlFormulario(mantenerDatos = true) {
+        document.getElementById('view-form').style.display = 'block';
+        document.getElementById('view-success').style.display = 'none';
+        document.getElementById('view-expired').style.display = 'none';
+        document.getElementById('view-error').style.display = 'none';
+
+        if (!mantenerDatos) {
+            document.getElementById('input-documento').value = '';
+            document.getElementById('input-nombre').value = '';
+            document.getElementById('input-documento').focus();
+        } else {
+            document.getElementById('input-codigo').focus();
+        }
+
+        const btn = document.querySelector('#form-confirmar button[type="submit"]');
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="icon" style="width:16px;height:16px"><use href="#ic-check"/></svg> Confirmar mi asistencia';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const inputDoc = document.getElementById('input-documento');
+        const inputNom = document.getElementById('input-nombre');
+        const inputCod = document.getElementById('input-codigo');
+
+        // Restaurar de localStorage si no están llenos
+        if (!inputDoc.value) {
+            const savedDoc = localStorage.getItem('sena_aprendiz_doc');
+            if (savedDoc) inputDoc.value = savedDoc;
+        }
+        if (!inputNom.value) {
+            const savedNom = localStorage.getItem('sena_aprendiz_nombre');
+            if (savedNom) inputNom.value = savedNom;
+        }
+
+        // Búsqueda inteligente por documento con debounce
+        let searchTimer = null;
+        inputDoc.addEventListener('input', () => {
+            clearTimeout(searchTimer);
+            const doc = inputDoc.value.trim();
+            if (doc.length >= 6 && !inputNom.value) {
+                const loading = document.getElementById('doc-loading');
+                if (loading) loading.style.display = 'inline';
+                searchTimer = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`/aprendiz/buscar-documento/${encodeURIComponent(doc)}`);
+                        const data = await res.json();
+                        if (data.encontrado && data.nombre) {
+                            inputNom.value = data.nombre;
+                            showToast(`Bienvenido de nuevo, ${data.nombre.split(' ')[0]}`);
+                        }
+                    } catch (err) {
+                        // Silencioso
+                    } finally {
+                        if (loading) loading.style.display = 'none';
+                    }
+                }, 400);
+            }
+        });
+    });
+
+    document.getElementById('form-confirmar').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const codigo = document.getElementById('input-codigo').value.trim();
+        const documento = document.getElementById('input-documento').value.trim();
+        const nombre = document.getElementById('input-nombre').value.trim();
+        const btn = this.querySelector('button[type="submit"]');
+        
+        if (!documento) {
+            showToast('Ingresa tu número de cédula o documento', 'error');
+            document.getElementById('input-documento').focus();
+            return;
+        }
+        if (!nombre || nombre.length < 3) {
+            showToast('Ingresa tus nombres y apellidos completos', 'error');
+            document.getElementById('input-nombre').focus();
+            return;
+        }
+        if (!codigo) {
+            showToast('Ingresa el código del QR proyectado', 'error');
+            document.getElementById('input-codigo').focus();
+            return;
+        }
+
+        // Recordar datos localmente para agilidad en futuras asistencias
+        localStorage.setItem('sena_aprendiz_doc', documento);
+        localStorage.setItem('sena_aprendiz_nombre', nombre);
+
+        btn.disabled = true;
+        btn.textContent = 'Registrando asistencia...';
+
+        try {
+            const resp = await fetch("{{ url_for('aprendiz.confirmar') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    codigo: codigo,
+                    documento: documento,
+                    nombre: nombre
+                })
+            });
+
+            const data = await resp.json();
+
+            document.getElementById('view-form').style.display = 'none';
+
+            if (data.exito) {
+                document.getElementById('view-success').style.display = 'block';
+                if (data.datos) {
+                    document.getElementById('result-detail').innerHTML = `
+                        <div><span>Aprendiz</span><span>${data.datos.nombre || ''}</span></div>
+                        <div><span>Documento</span><span>CC ${data.datos.documento || ''}</span></div>
+                        <div><span>Ficha</span><span>${data.datos.ficha || ''}</span></div>
+                        <div><span>Fecha</span><span>${data.datos.fecha || ''}</span></div>
+                        <div><span>Hora</span><span>${data.datos.hora || ''}</span></div>
+                    `;
+                }
+                showToast('¡Asistencia registrada correctamente!');
+            } else {
+                const msg = data.mensaje || '';
+                if (msg.includes('expiró') || msg.includes('inválido')) {
+                    document.getElementById('view-expired').style.display = 'block';
+                } else {
+                    document.getElementById('view-error').style.display = 'block';
+                    document.getElementById('error-message').textContent = msg || 'Error al registrar asistencia.';
+                }
+            }
+        } catch (err) {
+            document.getElementById('view-form').style.display = 'none';
+            document.getElementById('view-error').style.display = 'block';
+            document.getElementById('error-message').textContent = 'Error de conexión. Verifica tu red o intenta de nuevo.';
+        }
+    });
+</script>
+{% endblock %}
+

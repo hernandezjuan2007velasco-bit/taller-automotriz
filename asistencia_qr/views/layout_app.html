@@ -1,0 +1,84 @@
+{% extends 'layout.html' %}
+
+{% block contenido %}
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar-main">
+        <div class="sidebar-brand">
+            <div class="mark"><svg viewBox="0 0 24 24" style="fill:none;stroke-width:2"><use href="#ic-qr"/></svg></div>
+            <div class="txt"><div>Asistencia QR</div><div>SENA · Regional Huila</div></div>
+            <button class="collapse-btn" onclick="toggleSidebar()"><svg><use href="#ic-chevron-left"/></svg></button>
+        </div>
+
+        {% if usuario_actual and usuario_actual.rol == 'instructor' %}
+            <div class="nav-section">Formación</div>
+            <a href="{{ url_for('instructor.sesion') }}" class="nav-item {% if nav_activo == 'sesion' %}active{% endif %}" style="text-decoration: none;">
+                <svg><use href="#ic-qr"/></svg><span>Generar sesión</span>
+            </a>
+            <a href="{{ url_for('instructor.historial') }}" class="nav-item {% if nav_activo == 'historial' %}active{% endif %}" style="text-decoration: none;">
+                <svg><use href="#ic-history"/></svg><span>Historial de asistencia</span>
+            </a>
+            <a href="{{ url_for('instructor.alertas') }}" class="nav-item {% if nav_activo == 'alertas' %}active{% endif %}" style="text-decoration: none;">
+                <svg><use href="#ic-alert"/></svg><span>Alertas de deserción</span>
+                {% block alertas_count %}{% endblock %}
+            </a>
+        {% elif usuario_actual and usuario_actual.rol == 'admin' %}
+            <div class="nav-section">Administración</div>
+            <a href="{{ url_for('admin.panel') }}" class="nav-item {% if nav_activo == 'admin' %}active{% endif %}" style="text-decoration: none;">
+                <svg><use href="#ic-admin"/></svg><span>Panel de administración</span>
+            </a>
+            <div class="nav-item" style="opacity: 0.6; cursor: default;">
+                <svg><use href="#ic-users2"/></svg><span>Todas las fichas activas</span>
+            </div>
+        {% elif usuario_actual and usuario_actual.rol == 'aprendiz' %}
+            <div class="nav-section">Mi Formación</div>
+            <a href="{{ url_for('aprendiz.escanear') }}" class="nav-item {% if nav_activo == 'escanear' %}active{% endif %}" style="text-decoration: none;">
+                <svg><use href="#ic-qr"/></svg><span>Escanear Asistencia</span>
+            </a>
+            <a href="{{ url_for('aprendiz.historial') }}" class="nav-item {% if nav_activo == 'historial' %}active{% endif %}" style="text-decoration: none;">
+                <svg><use href="#ic-history"/></svg><span>Mi Historial</span>
+            </a>
+        {% endif %}
+
+        <div class="nav-section">Cuenta</div>
+        <a href="{{ url_for('auth.logout') }}" class="nav-item" style="text-decoration: none;">
+            <svg><use href="#ic-logout"/></svg><span>Cerrar sesión</span>
+        </a>
+
+        {% if usuario_actual %}
+        <div class="sidebar-footer">
+            <div class="avatar">{{ usuario_actual.iniciales }}</div>
+            <div class="who">
+                <div>{{ usuario_actual.nombre }}</div>
+                <div>{{ usuario_actual.rol|capitalize }}</div>
+            </div>
+        </div>
+        {% endif %}
+    </aside>
+
+    <div class="main">
+        <div class="topbar">
+            <div>
+                <div class="breadcrumb">{% block breadcrumb %}{% endblock %}</div>
+                <h1>{% block titulo_pagina %}{% endblock %}</h1>
+            </div>
+            {% block topbar_acciones %}{% endblock %}
+        </div>
+
+        <div class="content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div style="margin-bottom: 16px;">
+                        {% for category, message in messages %}
+                            <div class="offline-banner" style="{% if category == 'success' %}background:var(--brand-50);border-color:var(--brand-100);color:var(--brand-3);{% elif category == 'error' %}background:var(--red-bg);border-color:rgba(208,67,61,0.2);color:var(--red-ink);{% endif %}">
+                                <svg class="icon" style="width:16px;height:16px;"><use href="{% if category == 'success' %}#ic-check{% elif category == 'error' %}#ic-alert{% else %}#ic-info{% endif %}"/></svg>
+                                <span>{{ message }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            {% block contenido_pagina %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}

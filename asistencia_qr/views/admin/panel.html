@@ -1,0 +1,487 @@
+{% extends 'layout_app.html' %}
+
+{% set nav_activo = 'admin' %}
+{% block breadcrumb %}Sistema{% endblock %}
+{% block titulo_pagina %}Panel de administración{% endblock %}
+
+{% block topbar_acciones %}
+<div style="display:flex;gap:10px;align-items:center;">
+    <button class="btn btn-primary btn-sm" onclick="openModal('modal-crear-usuario')">
+        <svg class="icon" style="width:14px;height:14px"><use href="#ic-plus"/></svg>Nuevo usuario
+    </button>
+    <button class="btn btn-sm" onclick="openModal('modal-crear-ficha')">
+        <svg class="icon" style="width:14px;height:14px"><use href="#ic-plus"/></svg>Nueva ficha
+    </button>
+</div>
+{% endblock %}
+
+{% block contenido_pagina %}
+<div class="subtabs">
+    <div class="subtab {% if tab_activa == 'dashboard' or not tab_activa %}active{% endif %}" onclick="showAdminTab('dashboard', this)">Dashboard</div>
+    <div class="subtab {% if tab_activa == 'fichas' %}active{% endif %}" onclick="showAdminTab('fichas', this)">Fichas ({{ fichas|length }})</div>
+    <div class="subtab {% if tab_activa == 'usuarios' %}active{% endif %}" onclick="showAdminTab('usuarios', this)">Usuarios ({{ usuarios|length }})</div>
+    <div class="subtab {% if tab_activa == 'auditoria' %}active{% endif %}" onclick="showAdminTab('auditoria', this)">Auditoría ({{ auditoria_log.total|default(0) }})</div>
+    <div class="subtab {% if tab_activa == 'config' %}active{% endif %}" onclick="showAdminTab('config', this)">Configuración</div>
+</div>
+
+<!-- ==========================================
+     Tab 1: Dashboard
+========================================== -->
+<div id="admin-dashboard" class="admin-tab" style="display:{% if tab_activa == 'dashboard' or not tab_activa %}block{% else %}none{% endif %}">
+    <div class="grid-cards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 24px;">
+        <div class="card" style="padding:20px; text-align:center;">
+            <div style="font-size:12px; color:var(--muted); font-weight:600;">Total Aprendices</div>
+            <div style="font-size:28px; font-weight:700; color:var(--primary); margin-top:4px;">{{ metricas.total_aprendices }}</div>
+        </div>
+        <div class="card" style="padding:20px; text-align:center;">
+            <div style="font-size:12px; color:var(--muted); font-weight:600;">Total Instructores</div>
+            <div style="font-size:28px; font-weight:700; color:var(--primary); margin-top:4px;">{{ metricas.total_instructores }}</div>
+        </div>
+        <div class="card" style="padding:20px; text-align:center;">
+            <div style="font-size:12px; color:var(--muted); font-weight:600;">Fichas Activas</div>
+            <div style="font-size:28px; font-weight:700; color:var(--primary); margin-top:4px;">{{ metricas.fichas_activas }}</div>
+        </div>
+        <div class="card" style="padding:20px; text-align:center;">
+            <div style="font-size:12px; color:var(--muted); font-weight:600;">Sesiones Abiertas (Hoy)</div>
+            <div style="font-size:28px; font-weight:700; color:var(--primary); margin-top:4px;">{{ metricas.sesiones_activas }}</div>
+        </div>
+        <div class="card" style="padding:20px; text-align:center;">
+            <div style="font-size:12px; color:var(--muted); font-weight:600;">Asistencias Registradas (Hoy)</div>
+            <div style="font-size:28px; font-weight:700; color:var(--success); margin-top:4px;">{{ metricas.asistencias_hoy }}</div>
+        </div>
+        <div class="card" style="padding:20px; text-align:center;">
+            <div style="font-size:12px; color:var(--muted); font-weight:600;">Alertas Activas</div>
+            <div style="font-size:28px; font-weight:700; color:var(--danger); margin-top:4px;">{{ metricas.alertas_activas }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================
+     Tab 2: Fichas
+========================================== -->
+<div id="admin-fichas" class="admin-tab" style="display:{% if tab_activa == 'fichas' %}block{% else %}none{% endif %}">
+    <div class="filters-bar" style="justify-content: space-between;">
+        <div style="font-size:14px; font-weight:700; color:var(--ink);">Fichas de Caracterización Registradas</div>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-crear-ficha')">
+            <svg class="icon" style="width:14px;height:14px"><use href="#ic-plus"/></svg>Nueva Ficha
+        </button>
+    </div>
+    <div class="card" style="overflow:hidden">
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Programa de Formación</th>
+                        <th>Sede</th>
+                        <th>Apertura</th>
+                        <th>Estado</th>
+                        <th style="text-align:right;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in fichas %}
+                    <tr>
+                        <td style="font-family:var(--mono)"><b>Ficha {{ f.numero }}</b></td>
+                        <td>{{ f.programa }}</td>
+                        <td>{{ f.sede }}</td>
+                        <td>{{ f.fecha_apertura or '—' }}</td>
+                        <td>
+                            {% if f.estado == 'activa' %}
+                                <span class="badge badge-success"><span class="dot"></span>Activa</span>
+                            {% elif f.estado == 'suspendida' %}
+                                <span class="badge badge-warning"><span class="dot"></span>Suspendida</span>
+                            {% elif f.estado == 'finalizada' %}
+                                <span class="badge badge-neutral">Finalizada</span>
+                            {% else %}
+                                <span class="badge badge-neutral">Archivada</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:right;">
+                            <form method="POST" action="{{ url_for('admin.cambiar_estado_ficha') }}" style="display:inline-block;">
+                                <input type="hidden" name="ficha_id" value="{{ f.id }}">
+                                <select name="estado" onchange="this.form.submit()" class="btn-sm" style="padding:5px 8px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--surface); font-size:12px; cursor:pointer;">
+                                    <option value="" disabled selected>Cambiar estado...</option>
+                                    <option value="activa" {% if f.estado == 'activa' %}disabled{% endif %}>Marcar Activa</option>
+                                    <option value="suspendida" {% if f.estado == 'suspendida' %}disabled{% endif %}>Marcar Suspendida</option>
+                                    <option value="finalizada" {% if f.estado == 'finalizada' %}disabled{% endif %}>Marcar Finalizada</option>
+                                    <option value="archivada" {% if f.estado == 'archivada' %}disabled{% endif %}>Archivar</option>
+                                </select>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px 20px; color: var(--muted);">No hay fichas registradas aún. Haz clic en "Nueva Ficha" para agregar una.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================
+     Tab 3: Usuarios
+========================================== -->
+<div id="admin-usuarios" class="admin-tab" style="display:{% if tab_activa == 'usuarios' %}block{% else %}none{% endif %}">
+    <form method="GET" action="{{ url_for('admin.panel') }}" class="filters-bar">
+        <input type="hidden" name="tab" value="usuarios">
+        <div class="search-wrap">
+            <svg class="icon"><use href="#ic-search"/></svg>
+            <input type="text" name="q" placeholder="Buscar por nombre o CC..." value="{{ filtros_usuarios.q or '' }}">
+        </div>
+        <select name="rol">
+            <option value="">Todos los roles</option>
+            <option value="instructor" {% if filtros_usuarios.rol == 'instructor' %}selected{% endif %}>Instructor</option>
+            <option value="admin" {% if filtros_usuarios.rol == 'admin' %}selected{% endif %}>Administrador</option>
+            <option value="aprendiz" {% if filtros_usuarios.rol == 'aprendiz' %}selected{% endif %}>Aprendiz</option>
+        </select>
+        <select name="estado">
+            <option value="">Todos los estados</option>
+            <option value="activo" {% if filtros_usuarios.estado == 'activo' %}selected{% endif %}>Activo</option>
+            <option value="desactivado" {% if filtros_usuarios.estado == 'desactivado' %}selected{% endif %}>Desactivado</option>
+        </select>
+        <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+        {% if filtros_usuarios.q or filtros_usuarios.rol or filtros_usuarios.estado %}
+            <a href="{{ url_for('admin.panel', tab='usuarios') }}" class="btn btn-sm" style="color:var(--muted);">Limpiar</a>
+        {% endif %}
+        <div class="spacer"></div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openModal('modal-crear-usuario')">
+            <svg class="icon" style="width:14px;height:14px"><use href="#ic-plus"/></svg>Nuevo Usuario
+        </button>
+    </form>
+    
+    <div class="card" style="overflow:hidden">
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Rol</th>
+                        <th>Centro de Formación</th>
+                        <th>Estado</th>
+                        <th style="text-align:right;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in usuarios %}
+                    {% set partes = (u.nombre or '').split() %}
+                    {% set ini1 = partes[0][0] if partes|length > 0 else 'U' %}
+                    {% set ini2 = partes[1][0] if partes|length > 1 else '' %}
+                    <tr>
+                        <td class="cell-person">
+                            <div class="mini-avatar {% if u.rol == 'admin' %}admin{% endif %}">{{ (ini1 ~ ini2)|upper }}</div>
+                            <div>
+                                <div style="font-weight:600;">{{ u.nombre }}</div>
+                                <div style="font-size:11.5px;color:var(--muted);font-family:var(--mono);">CC {{ u.documento }}</div>
+                            </div>
+                        </td>
+                        <td>
+                            {% if u.rol == 'admin' %}
+                                <span class="badge badge-warning">Administrador</span>
+                            {% elif u.rol == 'instructor' %}
+                                <span class="badge badge-success">Instructor</span>
+                            {% else %}
+                                <span class="badge badge-neutral">Aprendiz</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:12.5px; color:var(--ink-soft);">{{ u.centro|default('SENA Regional Huila') }}</td>
+                        <td>
+                            {% if u.estado == 'activo' %}
+                                <span class="badge badge-success"><span class="dot"></span>Activo</span>
+                            {% else %}
+                                <span class="badge badge-neutral"><span class="dot"></span>Desactivado</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:right;">
+                            <button class="icon-btn" title="Editar usuario" onclick="abrirEditarUsuario({{ u|tojson|forceescape }})">
+                                <svg class="icon"><use href="#ic-edit"/></svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 40px 20px; color: var(--muted);">No se encontraron usuarios con los filtros aplicados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================
+     Tab 4: Auditoría
+========================================== -->
+<div id="admin-auditoria" class="admin-tab" style="display:{% if tab_activa == 'auditoria' %}block{% else %}none{% endif %}">
+    <form method="GET" action="{{ url_for('admin.panel') }}" class="filters-bar">
+        <input type="hidden" name="tab" value="auditoria">
+        
+        <div class="search-wrap">
+            <svg class="icon"><use href="#ic-search"/></svg>
+            <input type="text" name="aud_q" placeholder="Buscar en logs..." value="{{ filtros_auditoria.q or '' }}">
+        </div>
+        
+        <div style="display:flex;align-items:center;gap:6px;">
+            <input type="date" name="aud_fecha_inicio" value="{{ filtros_auditoria.fecha_inicio or '' }}" title="Fecha inicio">
+            <span style="color:var(--muted-2);font-size:12px">a</span>
+            <input type="date" name="aud_fecha_fin" value="{{ filtros_auditoria.fecha_fin or '' }}" title="Fecha fin">
+        </div>
+        
+        <select name="aud_accion">
+            <option value="">Todas las acciones</option>
+            <option value="SESION_CREADA" {% if filtros_auditoria.accion == 'SESION_CREADA' %}selected{% endif %}>Sesión Creada</option>
+            <option value="SESION_CERRADA" {% if filtros_auditoria.accion == 'SESION_CERRADA' %}selected{% endif %}>Sesión Cerrada</option>
+            <option value="ASISTENCIA_REGISTRADA" {% if filtros_auditoria.accion == 'ASISTENCIA_REGISTRADA' %}selected{% endif %}>Asistencia Registrada</option>
+            <option value="CORRECCION_ASISTENCIA" {% if filtros_auditoria.accion == 'CORRECCION_ASISTENCIA' %}selected{% endif %}>Corrección Asistencia</option>
+            <option value="USUARIO_CREADO" {% if filtros_auditoria.accion == 'USUARIO_CREADO' %}selected{% endif %}>Usuario Creado</option>
+            <option value="USUARIO_EDITADO" {% if filtros_auditoria.accion == 'USUARIO_EDITADO' %}selected{% endif %}>Usuario Editado</option>
+            <option value="FICHA_CREADA" {% if filtros_auditoria.accion == 'FICHA_CREADA' %}selected{% endif %}>Ficha Creada</option>
+            <option value="INTENTO_REGISTRO" {% if filtros_auditoria.accion == 'INTENTO_REGISTRO' %}selected{% endif %}>Intento Rechazado</option>
+        </select>
+        
+        <select name="aud_resultado">
+            <option value="">Todos los resultados</option>
+            <option value="exitoso" {% if filtros_auditoria.resultado == 'exitoso' %}selected{% endif %}>Exitoso</option>
+            <option value="fallido" {% if filtros_auditoria.resultado == 'fallido' %}selected{% endif %}>Fallido</option>
+        </select>
+        
+        <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+        {% if filtros_auditoria.q or filtros_auditoria.fecha_inicio or filtros_auditoria.fecha_fin or filtros_auditoria.accion or filtros_auditoria.resultado %}
+            <a href="{{ url_for('admin.panel', tab='auditoria') }}" class="btn btn-sm" style="color:var(--muted);">Limpiar</a>
+        {% endif %}
+    </form>
+    
+    <div class="card" style="overflow:hidden">
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>Fecha y Hora</th>
+                        <th>Usuario / Actor</th>
+                        <th>Acción</th>
+                        <th>Resultado</th>
+                        <th>Detalle Forense</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for aud in auditoria_log.get('registros', []) %}
+                    {% set aud_partes = (aud.usuario_nombre or '').split() %}
+                    {% set aud_ini1 = aud_partes[0][0] if aud_partes|length > 0 else 'S' %}
+                    {% set aud_ini2 = aud_partes[1][0] if aud_partes|length > 1 else '' %}
+                    <tr>
+                        <td style="font-family:var(--mono);font-size:12px;">{{ aud.created_at }}</td>
+                        <td class="cell-person">
+                            <div class="mini-avatar">{{ (aud_ini1 ~ aud_ini2)|upper }}</div>
+                            <div>
+                                <div style="font-weight:600;">{{ aud.usuario_nombre|default('Sistema Autónomo') }}</div>
+                                <div style="font-size:11px;color:var(--muted);font-family:var(--mono);">IP: {{ aud.ip_origen or '127.0.0.1' }}</div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge badge-neutral" style="font-family:var(--mono);font-size:11px;">{{ aud.accion }}</span>
+                        </td>
+                        <td>
+                            {% if aud.resultado == 'exitoso' %}
+                                <span class="badge badge-success"><span class="dot"></span>Éxito</span>
+                            {% else %}
+                                <span class="badge badge-danger"><span class="dot"></span>Fallido</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:12.5px;color:var(--ink-soft);max-width:320px;">{{ aud.detalle }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 40px 20px; color: var(--muted);">No hay registros de auditoría que coincidan con la búsqueda.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================
+     Tab 5: Configuración
+========================================== -->
+<div id="admin-config" class="admin-tab" style="display:{% if tab_activa == 'config' %}block{% else %}none{% endif %}">
+    <form method="POST" action="{{ url_for('admin.guardar_config') }}">
+        <input type="hidden" name="tab" value="config">
+        
+        <div class="kv-config">
+            {% for conf in configuracion %}
+            <div class="field">
+                <label>{{ conf.descripcion }}</label>
+                <input type="text" name="{{ conf.clave }}" value="{{ conf.valor }}" required>
+                <div class="hint">Variable técnica: <code>{{ conf.clave }}</code></div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div style="margin-top:24px">
+            <button type="submit" class="btn btn-primary">
+                <svg class="icon" style="width:15px;height:15px"><use href="#ic-check"/></svg>
+                Guardar Configuración
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- ==========================================
+     MODAL: Crear Usuario
+========================================== -->
+<div class="modal-backdrop" id="modal-crear-usuario">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3><svg class="icon" style="stroke:var(--brand);"><use href="#ic-user"/></svg>Registrar Nuevo Usuario</h3>
+            <button type="button" class="close-btn" onclick="closeModal('modal-crear-usuario')"><svg class="icon"><use href="#ic-x"/></svg></button>
+        </div>
+        <form method="POST" action="{{ url_for('admin.crear_usuario') }}">
+            <div class="modal-body">
+                <div class="form-field">
+                    <label for="usr-nombre">Nombres y Apellidos *</label>
+                    <input type="text" id="usr-nombre" name="nombre" placeholder="Ej: Carlos Eduardo Díaz Rojas" required>
+                </div>
+                <div class="form-field">
+                    <label for="usr-doc">Número de Documento / Cédula *</label>
+                    <input type="text" id="usr-doc" name="documento" placeholder="Ej: 1075349812" required>
+                </div>
+                <div class="form-field">
+                    <label for="usr-rol">Rol en el Sistema *</label>
+                    <select id="usr-rol" name="rol" required style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font-size:13.5px;font-weight:600;">
+                        <option value="instructor" selected>Instructor de Formación</option>
+                        <option value="admin">Administrador del Sistema</option>
+                        <option value="aprendiz">Aprendiz SENA</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="usr-centro">Centro de Formación</label>
+                    <input type="text" id="usr-centro" name="centro" value="Centro de la Industria, la Empresa y los Servicios - Neiva">
+                </div>
+                <div class="form-field">
+                    <label for="usr-pass">Contraseña Inicial</label>
+                    <input type="password" id="usr-pass" name="password" placeholder="Por defecto: sena2026" value="sena2026">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm" onclick="closeModal('modal-crear-usuario')">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-sm">Crear Usuario</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==========================================
+     MODAL: Editar Usuario
+========================================== -->
+<div class="modal-backdrop" id="modal-editar-usuario">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3><svg class="icon" style="stroke:var(--brand);"><use href="#ic-edit"/></svg>Editar Usuario</h3>
+            <button type="button" class="close-btn" onclick="closeModal('modal-editar-usuario')"><svg class="icon"><use href="#ic-x"/></svg></button>
+        </div>
+        <form method="POST" id="form-editar-usuario" action="">
+            <div class="modal-body">
+                <div class="form-field">
+                    <label for="edit-usr-nombre">Nombres y Apellidos *</label>
+                    <input type="text" id="edit-usr-nombre" name="nombre" required>
+                </div>
+                <div class="form-field">
+                    <label for="edit-usr-doc">Número de Documento *</label>
+                    <input type="text" id="edit-usr-doc" name="documento" required>
+                </div>
+                <div class="form-field">
+                    <label for="edit-usr-rol">Rol *</label>
+                    <select id="edit-usr-rol" name="rol" required style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font-size:13.5px;font-weight:600;">
+                        <option value="instructor">Instructor</option>
+                        <option value="admin">Administrador</option>
+                        <option value="aprendiz">Aprendiz</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="edit-usr-estado">Estado *</label>
+                    <select id="edit-usr-estado" name="estado" required style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font-size:13.5px;font-weight:600;">
+                        <option value="activo">Activo</option>
+                        <option value="desactivado">Desactivado</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="edit-usr-centro">Centro</label>
+                    <input type="text" id="edit-usr-centro" name="centro">
+                </div>
+                <div class="form-field">
+                    <label for="edit-usr-pass">Nueva Contraseña (Opcional)</label>
+                    <input type="password" id="edit-usr-pass" name="password" placeholder="Dejar en blanco para conservar la actual">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm" onclick="closeModal('modal-editar-usuario')">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-sm">Actualizar Usuario</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==========================================
+     MODAL: Crear Ficha
+========================================== -->
+<div class="modal-backdrop" id="modal-crear-ficha">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3><svg class="icon" style="stroke:var(--brand);"><use href="#ic-plus"/></svg>Registrar Nueva Ficha</h3>
+            <button type="button" class="close-btn" onclick="closeModal('modal-crear-ficha')"><svg class="icon"><use href="#ic-x"/></svg></button>
+        </div>
+        <form method="POST" action="{{ url_for('admin.crear_ficha') }}">
+            <div class="modal-body">
+                <div class="form-field">
+                    <label for="fch-numero">Número de Ficha *</label>
+                    <input type="text" id="fch-numero" name="numero" placeholder="Ej: 2694582" required>
+                </div>
+                <div class="form-field">
+                    <label for="fch-programa">Programa de Formación *</label>
+                    <input type="text" id="fch-programa" name="programa" placeholder="Ej: Análisis y Desarrollo de Software (ADSO)" required>
+                </div>
+                <div class="form-field">
+                    <label for="fch-sede">Sede / Ambiente</label>
+                    <input type="text" id="fch-sede" name="sede" value="Sede Principal - Neiva" required>
+                </div>
+                <div class="form-field">
+                    <label for="fch-instructor">Instructor Responsable *</label>
+                    <select id="fch-instructor" name="instructor_id" required style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font-size:13.5px;font-weight:600;">
+                        {% for inst in instructores %}
+                            <option value="{{ inst.id }}">{{ inst.nombre }} (CC {{ inst.documento }})</option>
+                        {% else %}
+                            <option value="" disabled selected>No hay instructores activos disponibles</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm" onclick="closeModal('modal-crear-ficha')">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-sm">Crear Ficha</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function abrirEditarUsuario(u) {
+        if (!u) return;
+        document.getElementById('edit-usr-nombre').value = u.nombre || '';
+        document.getElementById('edit-usr-doc').value = u.documento || '';
+        document.getElementById('edit-usr-rol').value = u.rol || 'instructor';
+        document.getElementById('edit-usr-estado').value = u.estado || 'activo';
+        document.getElementById('edit-usr-centro').value = u.centro || '';
+        document.getElementById('edit-usr-pass').value = '';
+        
+        const form = document.getElementById('form-editar-usuario');
+        form.action = `/admin/usuarios/editar/${u.id}`;
+        
+        openModal('modal-editar-usuario');
+    }
+</script>
+{% endblock %}

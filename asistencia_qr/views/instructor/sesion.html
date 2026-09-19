@@ -1,0 +1,184 @@
+{% extends 'layout_app.html' %}
+
+{% set nav_activo = 'sesion' %}
+{% block breadcrumb %}Formación en curso{% endblock %}
+{% block titulo_pagina %}Generar sesión de asistencia{% endblock %}
+
+{% block topbar_acciones %}
+    {% if sesion_activa %}
+    <div class="ficha-select" style="background:rgba(57, 169, 0, 0.12); border-color:var(--primary); color:var(--text); padding:7px 14px;">
+        <svg class="icon" style="stroke:var(--primary); width:16px; height:16px;"><use href="#ic-users"/></svg>
+        <span style="font-weight:700; font-size:13px; color:var(--text);">Ficha {{ sesion_activa.ficha_numero }} — {{ sesion_activa.ficha_programa }}</span>
+    </div>
+    {% elif fichas %}
+    <div class="ficha-select" title="Ficha seleccionada para la sesión">
+        <svg class="icon"><use href="#ic-users"/></svg>
+        <select id="ficha-selector-top" style="border:none; background:transparent; font-weight:600; font-family:var(--font); outline:none; cursor:pointer; font-size:13px; color:var(--ink);">
+            {% for ficha in fichas %}
+                <option value="{{ ficha.id }}">Ficha {{ ficha.numero }} — {{ ficha.programa }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+{% endblock %}
+
+{% block contenido_pagina %}
+{% if not sesion_activa %}
+    <!-- DASHBOARD INSTRUCTOR -->
+    <div class="grid-cards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
+        <div class="card" style="padding:20px; text-align:center;">
+            <div style="font-size:12px; color:var(--muted);">Mis Fichas Activas</div>
+            <div style="font-size:28px; font-weight:600; color:var(--primary);">{{ metricas.total_fichas }}</div>
+        </div>
+        <div class="card" style="padding:20px; text-align:center;">
+            <div style="font-size:12px; color:var(--muted);">Sesiones Realizadas</div>
+            <div style="font-size:28px; font-weight:600; color:var(--primary);">{{ metricas.total_sesiones }}</div>
+        </div>
+        <div class="card" style="padding:20px; text-align:center;">
+            <div style="font-size:12px; color:var(--muted);">Asistencia Promedio</div>
+            <div style="font-size:28px; font-weight:600; color:var(--success);">{{ metricas.asistencia_promedio }}%</div>
+        </div>
+        <div class="card" style="padding:20px; text-align:center;">
+            <div style="font-size:12px; color:var(--muted);">Sesiones Activas (Ahora)</div>
+            <div style="font-size:28px; font-weight:600; color:var(--danger);">{{ metricas.sesiones_activas }}</div>
+        </div>
+    </div>
+
+    <div class="empty-state card" style="max-width: 520px; margin: 0 auto; padding: 40px 28px;">
+        <div class="ico">
+            <svg><use href="#ic-qr"/></svg>
+        </div>
+        <h3>Generar nueva sesión</h3>
+        <p style="margin-bottom: 24px; color:var(--muted); font-size:14px;">Inicia una nueva sesión de asistencia para permitir que los aprendices registren su llegada.</p>
+        
+        {% if fichas %}
+        <form id="form-generar-sesion" method="POST" action="{{ url_for('instructor.generar_sesion') }}" style="width: 100%;">
+            
+            <div class="form-field" style="text-align: left; margin-bottom: 18px;">
+                <label for="ficha_id" style="display:block; margin-bottom:8px; font-weight:600; font-size:13px; color:var(--text);">Selecciona la ficha de formación</label>
+                <select name="ficha_id" id="ficha_id" required style="width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius-sm); font-size:14px; background:var(--surface); font-weight:600; cursor:pointer; color:var(--ink);">
+                    {% for ficha in fichas %}
+                        <option value="{{ ficha.id }}">Ficha {{ ficha.numero }} — {{ ficha.programa }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 8px; padding: 13px; font-size: 14.5px;">
+                <svg class="icon" style="width:16px;height:16px;"><use href="#ic-plus"/></svg>
+                Iniciar sesión de asistencia
+            </button>
+        </form>
+        {% else %}
+        <div style="background:rgba(208, 67, 61, 0.08); border:1px solid rgba(208, 67, 61, 0.25); border-radius:var(--radius-sm); padding:18px; text-align:center;">
+            <p style="color:var(--danger); font-weight:700; margin:0 0 6px 0;">No hay fichas activas disponibles</p>
+            <p style="font-size:13px; color:var(--muted); margin:0;">Pide al administrador crear o activar una ficha en el sistema para iniciar sesiones.</p>
+        </div>
+        {% endif %}
+    </div>
+{% else %}
+    <div class="session-grid">
+        <div class="card qr-card reveal">
+            <div class="qr-status-row" style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="pulse-badge"><span class="pulse-dot"></span>Sesión activa</span>
+                <span style="font-size:12px; font-weight:700; color:var(--primary); background:rgba(57,169,0,0.1); padding:4px 9px; border-radius:4px; letter-spacing:.02em;">Ficha {{ sesion_activa.ficha_numero }}</span>
+            </div>
+
+            <div style="text-align:center; margin:8px 0 14px 0;">
+                <h4 style="margin:0; font-size:15px; font-weight:700; color:var(--ink);">{{ sesion_activa.ficha_programa }}</h4>
+            </div>
+
+            <div class="qr-ring-wrap">
+                <svg width="200" height="200" viewBox="0 0 190 190">
+                    <defs>
+                        <linearGradient id="qrGrad" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stop-color="#8FE24A"/>
+                            <stop offset="100%" stop-color="#2D8600"/>
+                        </linearGradient>
+                    </defs>
+                    <circle class="qr-ring-glow" cx="95" cy="95" r="81"/>
+                    <circle class="qr-ring-track" cx="95" cy="95" r="81"/>
+                    <circle class="qr-ring-prog" cx="95" cy="95" r="81"/>
+                </svg>
+                <div class="qr-code-box" id="qr-code-box">
+                    <img id="qr-imagen" src="" alt="Código QR" style="width: 100%; height: 100%; object-fit: contain; padding: 8px; border-radius: 14px;">
+                </div>
+            </div>
+
+            <div class="qr-refresh-label">Se actualiza en</div>
+            <div class="qr-refresh-time" id="qr-timer">--:--</div>
+
+            <div class="session-window">
+                <span class="t1">Ventana de registro</span>
+                <span class="t2" id="session-remaining">Abierta &middot; {{ sesion_activa.hora_inicio }}</span>
+            </div>
+
+            <div style="margin-top:14px; padding:12px 14px; background:var(--surface-2); border:1px solid var(--line); border-radius:var(--radius-sm); text-align:center;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-size:11px; color:var(--muted); text-transform:uppercase; font-weight:700; letter-spacing:.05em;">Enlace para aprendices</span>
+                    <button type="button" class="btn btn-sm" style="padding:4px 9px;font-size:11.5px;" onclick="copiarAlPortapapeles('{{ url_compartir }}/aprendiz/escanear', 'Enlace copiado para compartir con aprendices')">
+                        <svg class="icon" style="width:13px;height:13px"><use href="#ic-copy"/></svg> Copiar
+                    </button>
+                </div>
+                <div style="font-family:var(--mono); font-size:12px; font-weight:600; color:var(--primary); word-break:break-all; background:var(--surface); padding:7px 10px; border-radius:6px; border:1px solid var(--line-soft);" id="share-link-display">
+                    {{ url_compartir }}/aprendiz/escanear
+                </div>
+                <div style="font-size:11.5px; color:var(--muted); margin-top:8px;">Código actual: <b id="qr-codigo" style="font-family:var(--mono); color:var(--ink); font-size:13.5px;">--</b></div>
+            </div>
+
+            <div style="margin-top:16px;display:flex;gap:8px;">
+                <button type="button" class="btn btn-sm" style="flex:1;justify-content:center;" onclick="toggleModoProyector()" title="Proyectar QR en pantalla completa en el aula">
+                    <svg class="icon" style="width:15px;height:15px"><use href="#ic-maximize"/></svg> Modo Proyector
+                </button>
+                <form method="POST" action="{{ url_for('instructor.cerrar_sesion') }}" style="flex:1;">
+                    <button type="submit" class="btn btn-danger btn-sm" style="width: 100%; justify-content:center" onclick="return confirm('¿Seguro que deseas cerrar la sesión? Los aprendices que no marcaron quedarán registrados como ausentes.')">
+                        <svg class="icon" style="width:15px;height:15px"><use href="#ic-x"/></svg> Cerrar ventana
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card attend-card reveal" style="animation-delay:.08s">
+            <div class="attend-head">
+                <div>
+                    <h3>Registros en tiempo real</h3>
+                    <div class="cnt" id="attend-cnt">0 registrados</div>
+                </div>
+                <div class="state-toggle">
+                    <button class="active">Con registros</button>
+                </div>
+            </div>
+
+            <div class="attend-list" id="lista-asistentes" style="display:none;">
+                <!-- Se poblará vía AJAX -->
+            </div>
+            <div class="empty-state" id="asistentes-empty" style="padding: 40px 20px;">
+                <div class="ico">
+                    <svg><use href="#ic-users"/></svg>
+                </div>
+                <h3>Aún no hay registros</h3>
+                <p>Los aprendices que escaneen el código QR aparecerán aquí automáticamente.</p>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const topSelector = document.getElementById('ficha-selector-top');
+        const formSelector = document.getElementById('ficha_id');
+
+        if (topSelector && formSelector) {
+            // Sincronizar selector del topbar con el selector del formulario
+            topSelector.addEventListener('change', () => {
+                formSelector.value = topSelector.value;
+            });
+
+            formSelector.addEventListener('change', () => {
+                topSelector.value = formSelector.value;
+            });
+        }
+    });
+</script>
+{% endblock %}
